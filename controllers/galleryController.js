@@ -1,5 +1,6 @@
 const Gallery = require('../models/Gallery');
 const { successResponse, errorResponse } = require('../utils/ApiResponse');
+const { toWebPath } = require('../utils/uploadPath');
 
 const getPaginationParams = (query) => {
   const page = parseInt(query.page) || 1;
@@ -15,7 +16,7 @@ exports.createGallery = async (req, res, next) => {
   try {
     const { title, type } = req.body;
 
-    const image = req.file ? req.file.path.replace(/\\/g, '/') : undefined;
+    const image = req.file ? toWebPath(req.file.path, 'image') : undefined;
 
     if (!image) {
       return errorResponse(res, 400, 'Image is required');
@@ -68,10 +69,11 @@ exports.getGallery = async (req, res, next) => {
 // @access  Public
 exports.getGalleryItem = async (req, res, next) => {
   try {
-    const item = await Gallery.findById(req.params.id);
+    const item = await Gallery.findById(req.params.id).lean();
     if (!item) {
       return errorResponse(res, 404, 'Gallery item not found');
     }
+    if (item.image) item.image = toWebPath(item.image, 'image');
     return successResponse(res, 200, 'Success', { gallery: item });
   } catch (error) {
     next(error);
@@ -90,7 +92,7 @@ exports.updateGallery = async (req, res, next) => {
     if (type !== undefined) fieldsToUpdate.type = type;
 
     if (req.file) {
-      fieldsToUpdate.image = req.file.path.replace(/\\/g, '/');
+      fieldsToUpdate.image = toWebPath(req.file.path, 'image');
     }
 
     const gallery = await Gallery.findByIdAndUpdate(req.params.id, fieldsToUpdate, {

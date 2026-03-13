@@ -3,6 +3,7 @@ const Book = require('../models/Book');
 const Payment = require('../models/Payment');
 const path = require('path');
 const { successResponse, errorResponse } = require('../utils/ApiResponse');
+const { toWebPath } = require('../utils/uploadPath');
 const stripe = require('../config/stripe');
 
 const getPaginationParams = (query) => {
@@ -19,8 +20,12 @@ exports.createBook = async (req, res, next) => {
   try {
     const { title, author, description, isPaid, price } = req.body;
 
-    const coverImage = req.files?.coverImage?.[0]?.path?.replace(/\\/g, '/');
-    const bookFile = req.files?.bookFile?.[0]?.path?.replace(/\\/g, '/');
+    const coverImage = req.files?.coverImage?.[0]?.path
+      ? toWebPath(req.files.coverImage[0].path, 'image')
+      : undefined;
+    const bookFile = req.files?.bookFile?.[0]?.path
+      ? toWebPath(req.files.bookFile[0].path, 'book')
+      : undefined;
 
     const book = await Book.create({
       title: title || 'Untitled',
@@ -90,10 +95,12 @@ exports.getBooks = async (req, res, next) => {
 // @access  Public
 exports.getBook = async (req, res, next) => {
   try {
-    const book = await Book.findById(req.params.id);
+    const book = await Book.findById(req.params.id).lean();
     if (!book) {
       return errorResponse(res, 404, 'Book not found');
     }
+    if (book.coverImage) book.coverImage = toWebPath(book.coverImage, 'image');
+    if (book.bookFile) book.bookFile = toWebPath(book.bookFile, 'book');
     return successResponse(res, 200, 'Success', { book });
   } catch (error) {
     next(error);
@@ -213,10 +220,10 @@ exports.updateBook = async (req, res, next) => {
     if (price !== undefined) fieldsToUpdate.price = price;
 
     if (req.files?.coverImage?.[0]) {
-      fieldsToUpdate.coverImage = req.files.coverImage[0].path.replace(/\\/g, '/');
+      fieldsToUpdate.coverImage = toWebPath(req.files.coverImage[0].path, 'image');
     }
     if (req.files?.bookFile?.[0]) {
-      fieldsToUpdate.bookFile = req.files.bookFile[0].path.replace(/\\/g, '/');
+      fieldsToUpdate.bookFile = toWebPath(req.files.bookFile[0].path, 'book');
     }
 
     const book = await Book.findByIdAndUpdate(req.params.id, fieldsToUpdate, {

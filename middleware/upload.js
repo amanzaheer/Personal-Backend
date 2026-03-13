@@ -2,8 +2,13 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Ensure upload directories exist
-const uploadDirs = ['uploads', 'uploads/images', 'uploads/books'];
+// Use absolute path so uploads always live next to server.js (same as express.static)
+const uploadsRoot = path.join(__dirname, '..', 'uploads');
+const uploadDirs = [
+  uploadsRoot,
+  path.join(uploadsRoot, 'images'),
+  path.join(uploadsRoot, 'books'),
+];
 uploadDirs.forEach((dir) => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -12,15 +17,16 @@ uploadDirs.forEach((dir) => {
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    let folder = 'uploads/images';
-    if (file.fieldname === 'bookFile') {
-      folder = 'uploads/books';
-    }
+    const folder =
+      file.fieldname === 'bookFile'
+        ? path.join(uploadsRoot, 'books')
+        : path.join(uploadsRoot, 'images');
     cb(null, folder);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname) || '.bin');
+    const ext = path.extname(file.originalname) || '.bin';
+    cb(null, uniqueSuffix + ext);
   },
 });
 

@@ -1,5 +1,6 @@
 const Company = require('../models/Company');
 const { successResponse, errorResponse } = require('../utils/ApiResponse');
+const { toWebPath } = require('../utils/uploadPath');
 
 const getPaginationParams = (query) => {
   const page = parseInt(query.page) || 1;
@@ -15,7 +16,7 @@ exports.createCompany = async (req, res, next) => {
   try {
     const { name, website, description, type } = req.body;
 
-    const logo = req.file ? req.file.path.replace(/\\/g, '/') : undefined;
+    const logo = req.file ? toWebPath(req.file.path, 'image') : undefined;
 
     if (!name || !type) {
       return errorResponse(res, 400, 'Name and type (work/partner) are required');
@@ -50,6 +51,9 @@ exports.getCompanies = async (req, res, next) => {
       Company.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       Company.countDocuments(filter),
     ]);
+    companies.forEach((c) => {
+      if (c.logo) c.logo = toWebPath(c.logo, 'image');
+    });
 
     return successResponse(res, 200, 'Success', {
       companies,
@@ -70,10 +74,11 @@ exports.getCompanies = async (req, res, next) => {
 // @access  Public
 exports.getCompany = async (req, res, next) => {
   try {
-    const company = await Company.findById(req.params.id);
+    const company = await Company.findById(req.params.id).lean();
     if (!company) {
       return errorResponse(res, 404, 'Company not found');
     }
+    if (company.logo) company.logo = toWebPath(company.logo, 'image');
     return successResponse(res, 200, 'Success', { company });
   } catch (error) {
     next(error);
@@ -94,7 +99,7 @@ exports.updateCompany = async (req, res, next) => {
     if (type !== undefined) fieldsToUpdate.type = type;
 
     if (req.file) {
-      fieldsToUpdate.logo = req.file.path.replace(/\\/g, '/');
+      fieldsToUpdate.logo = toWebPath(req.file.path, 'image');
     }
 
     const company = await Company.findByIdAndUpdate(req.params.id, fieldsToUpdate, {
