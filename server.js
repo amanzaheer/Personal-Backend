@@ -24,13 +24,21 @@ startServer();
 // Security middleware
 app.use(helmet());
 
-// CORS
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL || '*',
-    credentials: true,
-  })
-);
+// CORS: allow FRONTEND_URL (comma-separated for multiple) or * if unset
+const corsOrigin = process.env.FRONTEND_URL;
+const allowedOrigins = corsOrigin
+  ? corsOrigin.split(',').map((o) => o.trim()).filter(Boolean)
+  : [];
+const corsOptions = {
+  credentials: true,
+  origin: allowedOrigins.length === 0
+    ? '*'
+    : (origin, cb) => {
+      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+      cb(null, false);
+    },
+};
+app.use(cors(corsOptions));
 
 // Rate limiting
 const limiter = rateLimit({
