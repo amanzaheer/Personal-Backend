@@ -21,24 +21,26 @@ const startServer = async () => {
 
 startServer();
 
-// Security middleware
-app.use(helmet());
-
-// CORS: allow FRONTEND_URL (comma-separated for multiple) or * if unset
+// CORS first so headers are not overridden (allow FRONTEND_URL comma-separated or * if unset)
 const corsOrigin = process.env.FRONTEND_URL;
 const allowedOrigins = corsOrigin
-  ? corsOrigin.split(',').map((o) => o.trim()).filter(Boolean)
+  ? corsOrigin.split(',').map((o) => o.trim().replace(/\/$/, '')).filter(Boolean)
   : [];
 const corsOptions = {
   credentials: true,
   origin: allowedOrigins.length === 0
-    ? '*'
+    ? true
     : (origin, cb) => {
-      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-      cb(null, false);
+      if (!origin) return cb(null, true);
+      const normalized = origin.replace(/\/$/, '');
+      const allowed = allowedOrigins.some((o) => o === origin || o === normalized);
+      return cb(null, allowed ? origin : false);
     },
 };
 app.use(cors(corsOptions));
+
+// Security middleware
+app.use(helmet());
 
 // Rate limiting
 const limiter = rateLimit({
