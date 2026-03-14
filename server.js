@@ -21,9 +21,9 @@ const startServer = async () => {
 
 startServer();
 
-// CORS first so headers are not overridden
-// FRONTEND_URL = comma-separated allowed origins (e.g. http://localhost:5173,https://your-app.vercel.app)
-// ALLOW_LOCALHOST = set to "true" to also allow http://localhost:* and http://127.0.0.1:* (for local dev against live backend)
+// CORS – allow frontend origins. For local frontend + live backend, set ALLOW_LOCALHOST=true on backend.
+// FRONTEND_URL = comma-separated (e.g. http://localhost:5173,https://your-app.vercel.app)
+// ALLOW_LOCALHOST = "true" to allow any http(s)://localhost:* and 127.0.0.1:* (needed when testing local frontend against this backend)
 const corsOrigin = process.env.FRONTEND_URL;
 const allowLocalhost = process.env.ALLOW_LOCALHOST === 'true' || process.env.ALLOW_LOCALHOST === '1';
 const allowedOrigins = corsOrigin
@@ -53,8 +53,12 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// Security middleware
-app.use(helmet());
+// Security middleware – allow cross-origin for /uploads so images load from any frontend origin
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 
 // Rate limiting
 const limiter = rateLimit({
