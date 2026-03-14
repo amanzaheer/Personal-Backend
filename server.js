@@ -21,19 +21,33 @@ const startServer = async () => {
 
 startServer();
 
-// CORS first so headers are not overridden (allow FRONTEND_URL comma-separated or * if unset)
+// CORS first so headers are not overridden
+// FRONTEND_URL = comma-separated allowed origins (e.g. http://localhost:5173,https://your-app.vercel.app)
+// ALLOW_LOCALHOST = set to "true" to also allow http://localhost:* and http://127.0.0.1:* (for local dev against live backend)
 const corsOrigin = process.env.FRONTEND_URL;
+const allowLocalhost = process.env.ALLOW_LOCALHOST === 'true' || process.env.ALLOW_LOCALHOST === '1';
 const allowedOrigins = corsOrigin
   ? corsOrigin.split(',').map((o) => o.trim().replace(/\/$/, '')).filter(Boolean)
   : [];
+const isLocalhost = (origin) => {
+  if (!origin || typeof origin !== 'string') return false;
+  try {
+    const u = new URL(origin);
+    return u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+  } catch {
+    return false;
+  }
+};
 const corsOptions = {
   credentials: true,
-  origin: allowedOrigins.length === 0
+  origin: allowedOrigins.length === 0 && !allowLocalhost
     ? true
     : (origin, cb) => {
       if (!origin) return cb(null, true);
       const normalized = origin.replace(/\/$/, '');
-      const allowed = allowedOrigins.some((o) => o === origin || o === normalized);
+      const inList = allowedOrigins.some((o) => o === origin || o === normalized);
+      const fromLocalhost = allowLocalhost && isLocalhost(origin);
+      const allowed = inList || fromLocalhost;
       return cb(null, allowed ? origin : false);
     },
 };
